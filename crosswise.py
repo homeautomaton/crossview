@@ -35,15 +35,19 @@ def get_ds_id( opts ):
 def get_alarm_setting():
     return input("JSON-format alarm data: ")
 
+def msg( s ):
+    return '' if s == ':auto' else s
+
 def list( cv, dev ):
     ds = cv.get_data_streams( dev )
     if isinstance( ds, str ):
         print( ds )
         return
-    print( f"{'identifier'.ljust(10)}  {'message_one'.ljust(20)} {'message_two'.ljust(20)} {'reading'}" )
-    print( f"{''.ljust(10,'-')}  {''.ljust(20,'-')} {''.ljust(20,'-')} {''.ljust(20,'-')}" )
-    for card in ds.get( 'cards' ):
-        print( f"{str(card['identifier']).ljust(10)}  {card['message_one'].ljust(20)} {card['message_two'].ljust(20)} {card['reading'] if 'reading' in card else ''}" )
+    print( f"{'identifier'.ljust(10)} {'enable'.ljust(8)} {'sort key'.ljust(10)} {'message_one'.ljust(20)} {'message_two'.ljust(20)} {'reading'}" )
+    print( f"{'------'.ljust(10,'-')} {'-'.ljust(8,'-')} {'----'.ljust(10,'-')} {'-------'.ljust(20,'-')} {'-------'.ljust(20,'-')} {''.ljust(20,'-')}" )
+    for card in sorted( ds.get( 'cards' ), key=lambda card: -card['weight'] ) :
+        print( f"{str(card['identifier']).ljust(10)} {str(card['enabled?']).ljust(8)} {str(card['weight']).ljust(10)} " + \
+               f"{msg(card['message_one']).ljust(20)} {msg(card['message_two']).ljust(20)} {card['reading'] if 'reading' in card else ''}" )
 
 def catalog( cv ):
     n = 0
@@ -109,7 +113,7 @@ def main():
         elif operation == 'catalog':
             catalog( cv )
         elif operation == 'subscribe':
-            cv.subscribe( dev )
+            print( cv.subscribe( dev, input( "subscription name or number: " ) ) )
         else:
             missed = True
         if missed:
@@ -120,6 +124,7 @@ def main():
             miscount = 0
 
 if __name__ == "__main__":
+    print("Please note: LaCrosse's servers can be quite slow. Timeouts or delays of 10-20s are not uncommon.")
     try:
         main()
     except (EOFError,KeyboardInterrupt):

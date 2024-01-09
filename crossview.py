@@ -152,3 +152,18 @@ class CrossView:
                  "snow_accumulation", "sunrise_time", "sunset_time", "tree", "uv_index", "wind_direction", "wind_gust",
                  "wind_speed", "hail_prob_12hr", "sky_cover_12hr", "snow_accumulation_12hr", "thunder_storm_prob_12hr",
                  "tornado_prob_12hr", "wind_dir_12hr", "wind_gust_12hr", "wind_speed_12hr" ]
+
+    def subscribe( self, dev, sub ):
+        url = "https://ingv2.lacrossetechnology.com/api/v1.1/displays/" + dev.sensor_id + "/data-stream"
+        cat = self.catalog()
+        if sub not in cat:
+            if sub.isdecimal() and int(sub) >= 1 and int(sub) <= len( cat ):
+                sub = cat[ int(sub) - 1 ]
+            else:
+                return "Not a valid subscription name or number"
+        payload =  {"enabled?":True,
+                    "feed":"ref.sensor." + dev.id,
+                    "kind":"Elixir.Ingressor.DataStream.Card.WeatherReadingCard.V1_1",
+                    "reading":sub}
+        r = requests.post(url, headers={"Authorization": "Bearer " + self.token, "content-type": "application/json"}, data=json.dumps(payload) )
+        return( r.json() )
