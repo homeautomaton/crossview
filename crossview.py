@@ -22,14 +22,15 @@ def datetime_to_int_seconds(dt_obj):
     return int((dt_obj - epoch_start).total_seconds())
 
 class CrossView:
-    def __init__(self, opts):
-        self.opts = opts
+    def __init__(self, user, password):
+        self.user = user
+        self.password = password
         self.token = None
         self.headers = None
         self.locations = []
         self.__devices = []
 
-        self.login(self.opts.user, self.opts.password)
+        self.login(self.user, self.password)
 
         if self.token:
             self.headers = {"Authorization": "Bearer " + self.token}
@@ -78,6 +79,7 @@ class CrossView:
               + location.id\
               + "/sensorAssociations?prettyPrint=false"
         r = requests.get(url, headers=self.headers)
+        self.devices.clear()
         body = r.json()
         if body:
             devices = body.get('items')
