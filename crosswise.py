@@ -1,18 +1,22 @@
 from crossview import CrossView
 from argparse import ArgumentParser, SUPPRESS
+import os
 
 class StashedValue:
-    def __init__(self, fn, prompt, opt, lookup=False):
+    def __init__(self, fn, prompt, prefix, opt, lookup=False):
         self.val = None
         self.opt = opt
         self.fn = fn
         self.prompt = prompt
         self.lookup = lookup
+        self.var = prefix + opt.upper()
 
     def get(self, opts=None, ask=False):
         if not self.val and not ask and opts:
             self.val = getattr(opts,self.opt)
-            if self.lookup:
+            if not self.val and self.var in os.environ:
+                self.val = os.environ[self.var]
+            if self.val and self.lookup:
                 self.val = self.fn(self.prompt, self.val)
         if not self.val or ask:
             self.val = self.fn(self.prompt, None)
@@ -27,7 +31,8 @@ def parse_cmdline():
     p.add_argument('-p', '--password', metavar='PASS', help='LaCrosse View password')
     p.add_argument('-s', '--device-serial', metavar='AB123C', help='Device serial, for alarm set/show operations')
     p.add_argument('-l', '--location', metavar='HOME', help='Location (set up in the phone app) where to find devices')
-    p.add_argument('-d', '--device', metavar='HOME', help='Device for data-stream operations')
+    p.add_argument('-d', '--device', metavar='CLOCK', help='Device for data-stream operations')
+    p.add_argument('-P', '--prefix', metavar='CV_', default='CV_', help='Prefix for environment variable settings')
     return p.parse_args()
 
 def choose( prompt, what, choices, key ):
@@ -110,12 +115,12 @@ def help():
 def main():
     opts = parse_cmdline()
 
-    dev_serial = StashedValue(lambda prompt, key: input(prompt), "Your device serial: ", "device_serial")
-    username = StashedValue(lambda prompt, key: input(prompt), "Username: ", "user")
-    password = StashedValue(lambda prompt, key: input(prompt), "Password: ", "password")
-    cv = StashedValue(lambda prompt, key: CrossView(username.get(opts), password.get(opts)), "cv", None)
-    location = StashedValue(lambda prompt, key: choose_location(cv.get(), 'location', key), "Location: ", "location", lookup=True)
-    device = StashedValue(lambda prompt, key: choose_device(cv.get(), location.get(opts), 'device', key), "Device: ", "device", lookup=True)
+    dev_serial = StashedValue(lambda prompt, key: input(prompt), "Your device serial: ", opts.prefix, "device_serial")
+    username = StashedValue(lambda prompt, key: input(prompt), "Username: ", opts.prefix, "user")
+    password = StashedValue(lambda prompt, key: input(prompt), "Password: ", opts.prefix, "password")
+    cv = StashedValue(lambda prompt, key: CrossView(username.get(opts), password.get(opts)), "cv: ", opts.prefix, "cv")
+    location = StashedValue(lambda prompt, key: choose_location(cv.get(), 'location', key), "Location: ", opts.prefix, "location", lookup=True)
+    device = StashedValue(lambda prompt, key: choose_device(cv.get(), location.get(opts), 'device', key), "Device: ", opts.prefix, "device", lookup=True)
 
     miscount = 0
     while True:
