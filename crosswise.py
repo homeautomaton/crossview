@@ -2,6 +2,26 @@ from crossview import CrossView
 from argparse import ArgumentParser, SUPPRESS
 import os
 
+# NOTES:
+#     This was developed and tested as a demonstration of how to control 
+#     the LaCrosse C82929 Projection Clock programmatically.
+#     It can set/arm/disarm the alarm, and change the "data stream" choices
+#     that cycle on the right top corner of the display.
+#     
+#     My hope is to see these functions one day integrated into Home Assistant,
+#     making it possible to have weather or traffic conditions adjust wake-up
+#     time, as one example. The data-stream capabilities are endless, as any
+#     measurement or status we have in Home Assistant could be displayed on 
+#     the clock. If the HA developers who maintain the LaCrosse View integration
+#     don't provide this functionality, I'll probably work on a NodeRED alternative.
+
+# TODO:
+#     consider programatic creation of location? device (if it's possible)?
+#     support for command/argument syntax, instead of always prompting
+#     support for command-line syntax to run one (or multiple?) commands with no prompt
+#     provide reverse-engineering features, to try out other parts of the API
+#     investigate if the data-streams can be made to change automatically scheduled in the API
+
 class StashedValue:
     def __init__(self, fn, prompt, prefix, opt, lookup=False):
         self.val = None
