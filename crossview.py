@@ -9,6 +9,9 @@ class Location:
         self.name = loc_dict.get('name')
         self.devices = []
 
+    def __str__(self):
+        return self.name
+
 class Device:
     def __init__(self, device_dict):
         self.name = device_dict.get('device_name')
@@ -16,6 +19,9 @@ class Device:
         self.id = device_dict.get('device_id')
         self.sensor_type = device_dict.get('sensor_type_name')
         self.sensor_id = device_dict.get('sensor_id')
+
+    def __str__(self):
+        return self.name
 
 def datetime_to_int_seconds(dt_obj):
     epoch_start = datetime(1970, 1, 1)

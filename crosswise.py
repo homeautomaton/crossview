@@ -1,31 +1,22 @@
 from crossview import CrossView
 from argparse import ArgumentParser, SUPPRESS
 
-class DeferredCall:
-    def __init__(self, fn):
-        self.val = None
-        self.fn = fn
-
-    def get(self):
-        if not self.val:
-            self.val = self.fn()
-        return self.val
-
 class StashedValue:
-    def __init__(self, prompt, opt):
+    def __init__(self, fn, prompt, opt=None):
         self.val = None
-        self.prompt = prompt
         self.opt = opt
+        self.fn = fn
+        self.prompt = prompt
 
-    def get(self, opts, force=False):
-        if not self.val and not force:
+    def get(self, opts=None, force=False):
+        if not self.val and not force and opts:
             self.val = getattr(opts,self.opt)
         if not self.val or force:
-            self.val = input(self.prompt)
+            self.val = self.fn(self.prompt)
         return self.val
 
     def show(self):
-        print(self.prompt + " " + (self.val if self.val else '<none>'))
+        print(self.prompt + " " + (str(self.val) if self.val else '<none>'))
 
 def parse_cmdline():
     p = ArgumentParser( description='Control a lacrosse WiFi-connected clock without the phone app' )
@@ -108,25 +99,19 @@ def help():
     print("show/set will require your display's device serial#, available from the phone app or printed on your device")
 
 def main():
-    dev = None
-    loc = None
     opts = parse_cmdline()
 
-    dev_serial = StashedValue("Your device serial:","device_serial")
-    username = StashedValue("Username:","user")
-    password = StashedValue("Password:","password")
-    cv = DeferredCall(lambda : CrossView(username.get(opts),password.get(opts)))
+    dev_serial = StashedValue(lambda prompt: input(prompt), "Your device serial: ", "device_serial")
+    username = StashedValue(lambda prompt: input(prompt), "Username: ", "user")
+    password = StashedValue(lambda prompt: input(prompt), "Password: ", "password")
+    cv = StashedValue(lambda prompt: CrossView(username.get(opts), password.get(opts)), "cv")
+    location = StashedValue(lambda prompt: choose_location(cv.get()), "Location: ")
+    device = StashedValue(lambda prompt: choose_device(cv.get(), location.get()), "Device: ")
 
     miscount = 0
     while True:
         operation = input("> ")
         operation = operation.strip()
-        if loc == None and operation == 'device':
-            print( "location must be set before using device command" )
-            continue
-        if dev == None and operation in ( 'list', 'delete', 'get', 'add', 'replace', 'subscribe' ):
-            print( "device must be set before using the " + operation + " command" )
-            continue
         missed = False
         if operation == 'help': help()
         elif operation == 'serial': dev_serial.get(opts,force=True)
@@ -134,21 +119,23 @@ def main():
         elif operation == 'password': password.get(opts,force=True)
         elif operation == 'show': print( cv.get().get_alarm( dev_serial.get( opts ) ) )
         elif operation == 'set': print( cv.get().set_alarm( dev_serial.get( opts ), get_alarm_setting() ) )
-        elif operation == 'list': list( cv.get(), dev )
-        elif operation == 'delete': print( cv.get().delete_data_stream( dev, get_ds_id( opts ) ) )
-        elif operation == 'get': print( cv.get().get_single_stream( dev, get_ds_id( opts ) ) )
-        elif operation == 'add': print( cv.get().add_data_stream( dev, input( "message one: " ), input( "message two: " ) ) )
-        elif operation == 'replace': print( cv.get().update_data_stream( dev, get_ds_id( opts ), input( "message one: " ), input( "message two: " ) ) )
         elif operation == 'catalog': catalog( cv.get() )
-        elif operation == 'subscribe': print( cv.get().subscribe( dev, input( "subscription name or number: " ) ) )
+        elif operation == 'list': list( cv.get(), device.get() )
+        elif operation == 'delete': print( cv.get().delete_data_stream( device.get(), get_ds_id( opts ) ) )
+        elif operation == 'get': print( cv.get().get_single_stream( device.get(), get_ds_id( opts ) ) )
+        elif operation == 'add': print( cv.get().add_data_stream( device.get(), input( "message one: " ), input( "message two: " ) ) )
+        elif operation == 'replace': print( cv.get().update_data_stream( device.get(), get_ds_id( opts ), input( "message one: " ), input( "message two: " ) ) )
+        elif operation == 'subscribe': print( cv.get().subscribe( device.get(), input( "subscription name or number: " ) ) )
         elif operation == 'info':
             dev_serial.show()
             username.show()
+            location.show()
+            device.show()
         elif operation == 'location':
             dev = None
-            loc = choose_location( cv.get() )
+            location.get()
         elif operation == 'device':
-            dev = choose_device( cv.get(), loc )
+            device.get()
         else:
             missed = True
         if missed:
